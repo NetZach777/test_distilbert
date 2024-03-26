@@ -1,0 +1,67 @@
+name: Python application CI/CD
+
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Installation de Git LFS
+      run: |
+        # Installez Git LFS
+        sudo apt-get install git-lfs
+        # Initialisez Git LFS dans le référentiel
+        git lfs install
+
+    - name: Checkout du code source
+      uses: actions/checkout@v2
+      with:
+        lfs: true
+
+    - name: Configuration de Python 3.9.18
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.9.18"
+
+    - name: Installation des dépendances Python
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Lint avec flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test avec pytest
+      run: |
+        pytest
+
+    - name: deploy sur ec2
+      env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOSTNAME: ${{ secrets.HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}    
+      run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+          cd /home/ubuntu/api_sentiment
+          git pull
+          source /home/ubuntu/miniconda3/etc/profile.d/conda.sh
+          conda activate env 
+          pip install -r requirements.txt
+          nohup uvicorn main:app --host 0.0.0.0 > uvicorn.log 2>&1 &
+          '
+
