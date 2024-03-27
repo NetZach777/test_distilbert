@@ -8,13 +8,13 @@ API_ENDPOINT = "/predict-sentiment/"
 def test_predict_sentiment_positive():
     response = client.post(API_ENDPOINT, json={"text": "I love FastAPI!"})
     assert response.status_code == 200
-    assert response.json() == {"sentiment": "positif"}  
+    assert response.json() == {"sentiment": "positive"}  
 
 # Teste la prédiction négative pour un texte négatif
 def test_predict_sentiment_negative():
     response = client.post(API_ENDPOINT, json={"text": "I hate Mondays!"})
     assert response.status_code == 200
-    assert response.json() == {"sentiment": "négatif"}  
+    assert response.json() == {"sentiment": "negative"}  
 
 # Teste la gestion d'une requête sans corps
 def test_predict_sentiment_no_body():
@@ -41,3 +41,4 @@ def test_predict_sentiment_wrong_content_type():
 def test_predict_sentiment_get_method_not_allowed():
     response = client.get(API_ENDPOINT)
     assert response.status_code == 405
+
