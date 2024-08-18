@@ -30,13 +30,11 @@ jobs:
         source "$HOME/miniconda/etc/profile.d/conda.sh"
         conda create -n py39 python=3.9.18 -y
         conda activate py39
-
-    # Étape 3 : Installation des dépendances Python
+   # Étape 3 : Installation des dépendances Python
     - name: Installation des dépendances Python
       run: |
         source "$HOME/miniconda/etc/profile.d/conda.sh"
         conda activate py39
-        pip install --upgrade pip
         pip install -r requirements.txt
 
     # Étape 4 : Lint avec flake8
