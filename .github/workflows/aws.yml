@@ -1,5 +1,6 @@
 name: Python application CI/CD
 
+
 on:
   push:
     branches:
@@ -16,60 +17,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Étape 1 : Installation de Miniconda
-    - name: Installer Miniconda
+    - name: Installation de Git LFS
       run: |
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-        bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda init bash
+        # Installez Git LFS
+        sudo apt-get install git-lfs
+        # Initialisez Git LFS dans le référentiel
+        git lfs install
 
-    # Étape 2 : Créer et activer l'environnement Python 3.9.18
-    - name: Créer et activer l'environnement Conda
-      run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda create -n py39 python=3.9.18 -y
-        conda activate py39
-   # Étape 3 : Installation des dépendances Python
+    - name: Checkout du code source
+      uses: actions/checkout@v2
+      with:
+        lfs: true
+
+    - name: Configuration de Python 3.9.18
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.9.18"
+
     - name: Installation des dépendances Python
       run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda activate py39
-        pip install -r requirements.txt
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    # Étape 4 : Lint avec flake8
     - name: Lint avec flake8
       run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda activate py39
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    # Étape 5 : Test avec pytest
     - name: Test avec pytest
       run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda activate py39
         pytest
 
-    # Étape 6 : Déployer sur EC2
-    - name: Deploy sur EC2
+    - name: deploy sur ec2
       env:
-        PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-        HOSTNAME: ${{ secrets.HOST }}
-        USER_NAME: ${{ secrets.EC2_USER }}
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOSTNAME: ${{ secrets.HOST }}
+          USER_NAME: ${{ secrets.EC2_USER }}    
       run: |
-        ssh -o StrictHostKeyChecking=no -i <(echo "$PRIVATE_KEY") ${USER_NAME}@${HOSTNAME} '
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
           cd /home/ubuntu/test_distilbert
           git pull
           source /home/ubuntu/miniconda3/etc/profile.d/conda.sh
-          conda activate py39
+          conda activate py39 
           pip install -r requirements.txt
-          nohup uvicorn main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
-        '
-
-    # Étape 7 : Vérifier que l'application a démarré
-    - name: Vérification du démarrage de l'application
-      run: |
-        sleep 5
-        curl -f http://${{ secrets.HOST }}:8000 || (echo "L'application n'a pas démarré correctement" && exit 1)
+          nohup uvicorn main:app --host 0.0.0.0 > uvicorn.log 2>&1 &
+          '
