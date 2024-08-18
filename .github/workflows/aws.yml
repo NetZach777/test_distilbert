@@ -64,3 +64,5 @@ jobs:
           pip install -r requirements.txt
           nohup uvicorn main:app --host 0.0.0.0 > uvicorn.log 2>&1 &
           '
+          # Supprimer la clé privée après l'utilisation
+          rm private_key
