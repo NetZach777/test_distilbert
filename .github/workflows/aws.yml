@@ -1,6 +1,5 @@
 name: Python application CI/CD
 
-
 on:
   push:
     branches:
@@ -17,20 +16,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Installation de Git LFS
-      run: |
-        # Installez Git LFS
-        sudo apt-get install git-lfs
-        # Initialisez Git LFS dans le référentiel
-        git lfs install
-
     - name: Checkout du code source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         lfs: true
 
+    - name: Installation de Git LFS
+      uses: actions/git-lfs/install@v1
+
     - name: Configuration de Python 3.9.18
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: "3.9.18"
 
@@ -49,19 +44,17 @@ jobs:
       run: |
         pytest
 
-    - name: deploy sur ec2
+    - name: Deploy sur EC2
       env:
-          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          HOSTNAME: ${{ secrets.HOST }}
-          USER_NAME: ${{ secrets.EC2_USER }}    
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        HOSTNAME: ${{ secrets.HOST }}
+        USER_NAME: ${{ secrets.EC2_USER }}
       run: |
-          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+        ssh -o StrictHostKeyChecking=no -i <(echo "$PRIVATE_KEY") ${USER_NAME}@${HOSTNAME} '
           cd /home/ubuntu/test_distilbert
           git pull
           source /home/ubuntu/miniconda3/etc/profile.d/conda.sh
-          conda activate py39 
+          conda activate py39
           pip install -r requirements.txt
           nohup uvicorn main:app --host 0.0.0.0 > uvicorn.log 2>&1 &
-          '
-
+        '
